@@ -33,15 +33,16 @@ export default function TitleSlide({ title, subtitle, presenter }: TitleSlidePro
                 />
             </div>
 
-            {/* 3. Bottom/Right Card Composition */}
-            {/* Container anchored to bottom right */}
-            <div className="absolute bottom-0 right-0 w-[800px] h-[600px] pointer-events-none overflow-visible">
+            {/* Main Title Text - Moved out of the card container to prevent print clipping */}
+            {/* Positioned absolutely relative to the slide root, safe from right-edge dependency */}
+            <div className="absolute top-1/2 left-24 transform -translate-y-1/2 z-30 max-w-2xl pointer-events-auto text-left">
+                {title && <h1 className="text-6xl font-bold mb-4 leading-tight drop-shadow-lg">{title}</h1>}
+                {subtitle && <p className="text-2xl text-purple-200">{subtitle}</p>}
+            </div>
 
-                {/* Main Title Text (Safe Area Left) */}
-                <div className="absolute top-1/2 left-[-40%] transform -translate-y-1/2 z-30 max-w-xl pointer-events-auto text-left">
-                    {title && <h1 className="text-6xl font-bold mb-4 leading-tight">{title}</h1>}
-                    {subtitle && <p className="text-2xl text-purple-200">{subtitle}</p>}
-                </div>
+            {/* 3. Bottom/Right Card Composition */}
+            {/* Container anchored to bottom right - Contains CARDS ONLY now */}
+            <div className="absolute bottom-0 right-0 w-[800px] h-[600px] pointer-events-none overflow-visible">
 
                 {/* 
             CARD GROUP 
