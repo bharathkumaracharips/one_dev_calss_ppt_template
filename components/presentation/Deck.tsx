@@ -5,33 +5,65 @@ import Slide3D from './Slide3D';
 
 interface DeckProps {
   children: React.ReactNode;
+  slideCounts: number[]; // Number of "steps" (e.g. bullet points) for each slide
 }
 
 export const DeckContext = React.createContext<{
   currentSlide: number;
   totalSlides: number;
+  currentStep: number;
   nextSlide: () => void;
   prevSlide: () => void;
 }>({
   currentSlide: 0,
   totalSlides: 0,
+  currentStep: 0,
   nextSlide: () => { },
   prevSlide: () => { },
 });
 
-export default function Deck({ children }: DeckProps) {
+export default function Deck({ children, slideCounts }: DeckProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0); // For inner slide animations (bullets)
   const [isPrinting, setIsPrinting] = useState(false);
   const slides = React.Children.toArray(children);
   const totalSlides = slides.length;
 
+  // Determine max steps for the current slide
+  const stepsInCurrentSlide = slideCounts[currentSlide] || 0;
+
   const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1 < totalSlides ? prev + 1 : prev));
-  }, [totalSlides]);
+    // If there are more steps (bullets) in the current slide, advance step
+    if (currentStep < stepsInCurrentSlide) {
+      setCurrentStep((prev) => prev + 1);
+    } else {
+      // Otherwise move to next slide
+      if (currentSlide + 1 < totalSlides) {
+        setCurrentSlide((prev) => prev + 1);
+        setCurrentStep(0); // Reset step for new slide
+      }
+    }
+  }, [currentSlide, currentStep, stepsInCurrentSlide, totalSlides]);
 
   const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev > 0 ? prev - 1 : prev));
-  }, []);
+    // If we are deep in steps, go back a step
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    } else {
+      // Otherwise go to previous slide
+      if (currentSlide > 0) {
+        // When going back, we typically want to start at the BEGINNING of the previous slide?
+        // Or the END (all bullets shown)?
+        // User said "back animation same thing", usually means reversing. 
+        // Showing all bullets on 'back' is better for flow if you accidentally skipped.
+        // But for simplicity/predictability, let's start at 0 (or we need to look up prev slide counts).
+        // Let's reset to 0 for now to keep it clean, or we can set to max steps of prev slide.
+        // Let's set to 0 to be safe/simple.
+        setCurrentSlide((prev) => prev - 1);
+        setCurrentStep(0);
+      }
+    }
+  }, [currentSlide, currentStep]);
 
   // --- Keyboard Handling ---
   useEffect(() => {
@@ -72,7 +104,7 @@ export default function Deck({ children }: DeckProps) {
   };
 
   return (
-    <DeckContext.Provider value={{ currentSlide, totalSlides, nextSlide, prevSlide }}>
+    <DeckContext.Provider value={{ currentSlide, totalSlides, currentStep, nextSlide, prevSlide }}>
 
       {/* 
         Print specific styles to ensure standard layout 
@@ -106,10 +138,14 @@ export default function Deck({ children }: DeckProps) {
         {/* SLIDE RENDERING */}
         {isPrinting ? (
           // PRINT MODE: Render ALL slides vertically (handled by page-break CSS)
+          // Steps ignored in print mode (show all)
           <div className="w-full">
             {slides.map((slide, index) => (
               <div key={index} className="print-slide relative w-full h-full">
-                {slide}
+                {/* Clone to ensure full visibility if component handles it, though default might be 0. 
+                    Ideally ContentSlide should default to 'all visible' if step is not passed or if printing.
+                    We'll pass a high step count if printing. */}
+                {React.isValidElement(slide) ? React.cloneElement(slide as React.ReactElement<any>, { step: 999 }) : slide}
               </div>
             ))}
           </div>
@@ -118,12 +154,22 @@ export default function Deck({ children }: DeckProps) {
           <div className="relative w-full h-full flex items-center justify-center">
             {slides.map((slide, index) => {
               // Optimization: Only render active slide + neighbors
+              // Expand range slightly to ensure animations don't cut off
               if (Math.abs(currentSlide - index) > 1) return null;
 
+              const isCurrent = index === currentSlide;
+
+              // Clone the slide to inject the 'step' prop only if it's the current slide
+              // logic: Neighbors get step=0 (reset) or max? 
+              // Better: passing step=0 to neighbors ensures they reset when you revisit.
+              const slideWithProps = React.isValidElement(slide)
+                ? React.cloneElement(slide as React.ReactElement<any>, { step: isCurrent ? currentStep : 0 })
+                : slide;
+
               return (
-                <div key={index} className={`absolute inset-0 flex items-center justify-center pointer-events-none ${index === currentSlide ? 'z-10 pointer-events-auto' : 'z-0'}`}>
-                  <Slide3D isActive={index === currentSlide}>
-                    {slide}
+                <div key={index} className={`absolute inset-0 flex items-center justify-center pointer-events-none ${isCurrent ? 'z-10 pointer-events-auto' : 'z-0'}`}>
+                  <Slide3D isActive={isCurrent}>
+                    {slideWithProps}
                   </Slide3D>
                 </div>
               );
@@ -160,7 +206,7 @@ export default function Deck({ children }: DeckProps) {
             <div className="flex items-center gap-4">
               <button
                 onClick={prevSlide}
-                disabled={currentSlide === 0}
+                disabled={currentSlide === 0 && currentStep === 0}
                 className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all hover:text-white"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
@@ -172,7 +218,7 @@ export default function Deck({ children }: DeckProps) {
 
               <button
                 onClick={nextSlide}
-                disabled={currentSlide === totalSlides - 1}
+                disabled={currentSlide === totalSlides - 1 && currentStep === stepsInCurrentSlide}
                 className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all hover:text-white"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>

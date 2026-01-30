@@ -5,9 +5,10 @@ interface TitleSlideProps {
     title: string;
     subtitle?: string;
     presenter?: string;
+    tagline?: string;
 }
 
-export default function TitleSlide({ title, subtitle, presenter }: TitleSlideProps) {
+export default function TitleSlide({ title, subtitle, presenter, tagline }: TitleSlideProps) {
     return (
         // Exact Dark Navy Background
         <div className="w-full h-full relative overflow-hidden bg-[#0a0520] text-white">
@@ -35,9 +36,22 @@ export default function TitleSlide({ title, subtitle, presenter }: TitleSlidePro
 
             {/* Main Title Text - Moved out of the card container to prevent print clipping */}
             {/* Positioned absolutely relative to the slide root, safe from right-edge dependency */}
-            <div className="absolute top-1/2 left-24 transform -translate-y-1/2 z-30 max-w-2xl pointer-events-auto text-left">
-                {title && <h1 className="text-6xl font-bold mb-4 leading-tight drop-shadow-lg">{title}</h1>}
-                {subtitle && <p className="text-2xl text-purple-200">{subtitle}</p>}
+            {/* Main Title Text - Moved out of the card container to prevent print clipping */}
+            {/* Positioned absolutely relative to the slide root, safe from right-edge dependency */}
+            <div className="absolute top-1/2 left-24 transform -translate-y-1/2 z-30 max-w-3xl pointer-events-auto text-left">
+                {/* Optional Tagline */}
+                {tagline && <p className="text-purple-400 font-bold tracking-widest uppercase mb-4">{tagline}</p>}
+
+                {title && <h1 className="text-6xl font-bold mb-6 leading-tight drop-shadow-lg">{title}</h1>}
+
+                {subtitle && <p className="text-3xl text-purple-100 font-light mb-12">{subtitle}</p>}
+
+                {presenter && (
+                    <div className="border-l-4 border-purple-500 pl-4">
+                        <p className="text-sm text-purple-300 uppercase tracking-widest mb-1">Presented By</p>
+                        <p className="text-xl text-white font-medium">{presenter}</p>
+                    </div>
+                )}
             </div>
 
             {/* 3. Bottom/Right Card Composition */}
