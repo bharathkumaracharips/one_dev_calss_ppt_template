@@ -65,6 +65,20 @@ export default function Deck({ children, slideCounts }: DeckProps) {
     }
   }, [currentSlide, currentStep]);
 
+  const forceNext = useCallback(() => {
+    if (currentSlide + 1 < totalSlides) {
+      setCurrentSlide((prev) => prev + 1);
+      setCurrentStep(0);
+    }
+  }, [currentSlide, totalSlides]);
+
+  const forcePrev = useCallback(() => {
+    if (currentSlide > 0) {
+      setCurrentSlide((prev) => prev - 1);
+      setCurrentStep(0);
+    }
+  }, [currentSlide]);
+
   // --- Keyboard Handling ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -175,6 +189,29 @@ export default function Deck({ children, slideCounts }: DeckProps) {
               );
             })}
           </div>
+        )}
+
+        {/* Force Navigation Buttons (Side) */}
+        {!isPrinting && (
+          <>
+            <button
+              onClick={forcePrev}
+              disabled={currentSlide === 0}
+              className="no-print absolute left-4 top-1/2 -translate-y-1/2 z-50 p-4 rounded-full hover:bg-white/5 text-white/20 hover:text-white transition-all disabled:opacity-0"
+              title="Previous Slide"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5" /><path d="m18 17-5-5 5-5" /></svg>
+            </button>
+
+            <button
+              onClick={forceNext}
+              disabled={currentSlide === totalSlides - 1}
+              className="no-print absolute right-4 top-1/2 -translate-y-1/2 z-50 p-4 rounded-full hover:bg-white/5 text-white/20 hover:text-white transition-all disabled:opacity-0"
+              title="Next Slide"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 17 5-5-5-5" /><path d="m6 17 5-5-5-5" /></svg>
+            </button>
+          </>
         )}
 
         {/* CONTROLS OVERLAY (Hidden when printing via 'no-print' class) */}

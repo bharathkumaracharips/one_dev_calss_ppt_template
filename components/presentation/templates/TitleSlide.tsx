@@ -11,7 +11,7 @@ interface TitleSlideProps {
 export default function TitleSlide({ title, subtitle, presenter, tagline }: TitleSlideProps) {
     return (
         // Exact Dark Navy Background
-        <div className="w-full h-full relative overflow-hidden bg-[#0a0520] text-white">
+        <div className="w-full h-full relative overflow-hidden bg-[#0e0440] text-white">
 
             {/* 1. Top Left Logo (White) */}
             <div className="absolute top-12 left-12 w-56 h-20 z-20">
