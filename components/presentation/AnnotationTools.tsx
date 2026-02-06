@@ -2,18 +2,24 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import * as fabric from 'fabric';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { analyzeShape, recognizeTextFromPath } from './utils/recognition';
 
 interface AnnotationToolsProps {
   isActive: boolean;
   onClose: () => void;
   slideIndex: number;
+  onNext: () => void;
+  onPrev: () => void;
+  totalSlides: number;
+  toggleFullScreen: () => void;
 }
 
 type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'arrow' | 'rectangle' | 'circle' | 'line';
 type Color = string;
 
-export default function AnnotationTools({ isActive, onClose, slideIndex }: AnnotationToolsProps) {
+export default function AnnotationTools({ isActive, onClose, slideIndex, onNext, onPrev, totalSlides, toggleFullScreen }: AnnotationToolsProps) {
   const canvasEl = useRef<HTMLCanvasElement>(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [tool, setTool] = useState<Tool>('pen');
@@ -27,11 +33,28 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
   const shapeStartPoint = useRef<{ x: number, y: number } | null>(null);
   const activeShape = useRef<fabric.Object | null>(null);
 
+  // Save Logic
+  const saveToStorage = () => {
+    if (!canvas) return;
+    const json = JSON.stringify(canvas.toJSON());
+    localStorage.setItem(`annotation_slide_${slideIndex}`, json);
+  };
+
+  // Load Logic
+  const loadFromStorage = (c: fabric.Canvas) => {
+    const saved = localStorage.getItem(`annotation_slide_${slideIndex}`);
+    if (saved) {
+      c.loadFromJSON(JSON.parse(saved), () => {
+        c.requestRenderAll();
+      });
+    }
+  };
+
   // Initialize Fabric Canvas
   useEffect(() => {
     if (!isActive || !canvasEl.current) return;
 
-    // Dispose existing if any (react strict mode double mount)
+    // Dispose existing if any
     if (canvas) {
       canvas.dispose();
     }
@@ -39,18 +62,35 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
     const newCanvas = new fabric.Canvas(canvasEl.current, {
       width: window.innerWidth,
       height: window.innerHeight,
-      isDrawingMode: true, // Start in pen mode
+      isDrawingMode: true,
       selection: true,
     });
 
-    // Set initial brush
     newCanvas.freeDrawingBrush = new fabric.PencilBrush(newCanvas);
     newCanvas.freeDrawingBrush.width = lineWidth;
     newCanvas.freeDrawingBrush.color = color;
 
+    // Load saved state
+    loadFromStorage(newCanvas);
+
+    // Auto-save on changes
+    const handleModification = () => {
+      // Use a timeout to debounce saving? For now save direct.
+      // We can't access 'canvas' state variable here reliably inside the effect closure if we don't ref it, 
+      // but 'newCanvas' is available.
+      // However, we need to use the helper which depends on 'slideIndex'. 
+      // It's cleaner to inline:
+      const json = JSON.stringify(newCanvas.toJSON());
+      localStorage.setItem(`annotation_slide_${slideIndex}`, json);
+    };
+
+    newCanvas.on('object:modified', handleModification);
+    newCanvas.on('object:added', handleModification);
+    newCanvas.on('object:removed', handleModification);
+    newCanvas.on('path:created', handleModification); // Pen strokes
+
     setCanvas(newCanvas);
 
-    // Handle Resize
     const handleResize = () => {
       newCanvas.setDimensions({
         width: window.innerWidth,
@@ -59,7 +99,6 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
     };
     window.addEventListener('resize', handleResize);
 
-    // Handle Keyboard (Delete/Backspace)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeObjects = newCanvas.getActiveObjects();
@@ -69,6 +108,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
             newCanvas.remove(obj);
           });
           newCanvas.requestRenderAll();
+          handleModification(); // Save deletion
         }
       }
     };
@@ -80,7 +120,8 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
       newCanvas.dispose();
       setCanvas(null);
     };
-  }, [isActive]);
+    // Re-run when slideIndex changes to load that slide's notes
+  }, [isActive, slideIndex]);
 
   // Handle Tool Changes
   useEffect(() => {
@@ -336,13 +377,44 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
   const handleShapeEnd = () => {
     isDrawingShape.current = false;
     activeShape.current = null;
-    // If arrow, we might want to add a head now?
-    // Leaving simple for MVP.
+    saveToStorage(); // Save after shape complete
   };
 
   const clearAll = () => {
     canvas?.clear();
-    // Re-set background?
+    saveToStorage();
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsProcessing(true);
+    try {
+      // 1. Capture the screen (Slide + Annotations)
+      // We grab 'document.body' to ensure we get everything visible
+      const canvasRef = await html2canvas(document.body, {
+        useCORS: true,
+        // @ts-ignore - scale is supported in runtime
+        scale: 2,
+        logging: false
+      });
+
+      const imgData = canvasRef.toDataURL('image/jpeg', 0.9);
+
+      // Calculate aspect ratio
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [canvasRef.width, canvasRef.height]
+      });
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvasRef.width, canvasRef.height);
+      pdf.save(`slide_${slideIndex + 1}_annotations.pdf`);
+
+    } catch (err) {
+      console.error('PDF Export failed', err);
+      alert('Failed to generate PDF');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isActive) return null;
@@ -393,11 +465,31 @@ export default function AnnotationTools({ isActive, onClose, slideIndex }: Annot
             <input type="range" min="1" max="20" value={lineWidth} onChange={e => setLineWidth(Number(e.target.value))} className="w-16 sm:w-20" />
           </div>
 
-          {/* Actions */}
+          {/* Actions Group */}
           <div className="flex items-center gap-1 border-l border-white/20 pl-2 sm:pl-4">
+            {/* Navigation Controls (Duplicated from Deck) */}
+            <button onClick={onPrev} disabled={slideIndex === 0} className="p-2 text-white/70 hover:bg-white/10 rounded disabled:opacity-30" title="Previous Slide">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <span className="text-white/50 font-mono text-xs">{slideIndex + 1}/{totalSlides}</span>
+            <button onClick={onNext} disabled={slideIndex === totalSlides - 1} className="p-2 text-white/70 hover:bg-white/10 rounded disabled:opacity-30" title="Next Slide">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+
+            {/* Fullscreen */}
+            <button onClick={toggleFullScreen} className="p-2 text-white/70 hover:bg-white/10 rounded" title="Toggle Fullscreen">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
+            </button>
+
+            {/* Download PDF */}
+            <button onClick={handleDownloadPDF} className="p-2 text-white/70 hover:text-blue-400 hover:bg-white/10 rounded" title="Download Slide with Annotations">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+            </button>
+
             <button onClick={clearAll} className="p-2 text-white/70 hover:text-red-400" title="Clear Canvas">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
             </button>
+
             <button onClick={onClose} className="p-2 bg-red-500 text-white rounded hover:bg-red-600" title="Close">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>

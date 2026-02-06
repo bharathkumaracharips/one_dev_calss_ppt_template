@@ -102,7 +102,7 @@ export default function Deck({ children, slideCounts }: DeckProps) {
   // --- Touch/Swipe Handling for Mobile/Tablet ---
   useEffect(() => {
     if (isPrinting || showAnnotations) return;
-    
+
     let touchStartX = 0;
     let touchStartY = 0;
     let touchEndX = 0;
@@ -122,7 +122,7 @@ export default function Deck({ children, slideCounts }: DeckProps) {
     const handleSwipe = () => {
       const diffX = touchStartX - touchEndX;
       const diffY = touchStartY - touchEndY;
-      
+
       // Only trigger if horizontal swipe is more significant than vertical
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
         if (diffX > 0) {
@@ -137,7 +137,7 @@ export default function Deck({ children, slideCounts }: DeckProps) {
 
     window.addEventListener('touchstart', handleTouchStart);
     window.addEventListener('touchend', handleTouchEnd);
-    
+
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
@@ -173,9 +173,9 @@ export default function Deck({ children, slideCounts }: DeckProps) {
       setIsExportingPPTX(true);
       console.log("Starting PowerPoint export...");
       console.log("Presentation data:", presentationData);
-      
+
       const fileName = await exportToPPTX(presentationData);
-      
+
       console.log("PowerPoint export completed successfully!");
       alert(`PowerPoint presentation downloaded successfully as: ${fileName}`);
     } catch (error) {
@@ -298,7 +298,7 @@ export default function Deck({ children, slideCounts }: DeckProps) {
                 className={`p-2 sm:p-2.5 md:p-3 rounded-full transition-all touch-manipulation ${showAnnotations ? 'bg-blue-500 text-white' : 'hover:bg-white/10 hover:text-white'}`}
               >
                 {/* Annotation/Pen Icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M12 19l7-7 3 3-7 7-3-3z" /><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="M2 2l7.586 7.586" /></svg>
               </button>
 
               <button
@@ -324,7 +324,7 @@ export default function Deck({ children, slideCounts }: DeckProps) {
                   </svg>
                 ) : (
                   // PowerPoint Icon
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4"/><path d="M10 16h2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M10 12h4" /><path d="M10 16h2" /></svg>
                 )}
               </button>
 
@@ -365,10 +365,14 @@ export default function Deck({ children, slideCounts }: DeckProps) {
       </div>
 
       {/* Annotation Tools Overlay */}
-      <AnnotationTools 
-        isActive={showAnnotations} 
+      <AnnotationTools
+        isActive={showAnnotations}
         onClose={() => setShowAnnotations(false)}
         slideIndex={currentSlide}
+        onNext={nextSlide}
+        onPrev={prevSlide}
+        totalSlides={totalSlides}
+        toggleFullScreen={toggleFullScreen}
       />
     </DeckContext.Provider>
   );
