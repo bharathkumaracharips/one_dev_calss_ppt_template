@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import * as fabric from 'fabric';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { analyzeShape, recognizeTextFromPath } from './utils/recognition';
+
 
 interface AnnotationToolsProps {
   isActive: boolean;
@@ -26,7 +26,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState<Color>('#FF0000');
   const [lineWidth, setLineWidth] = useState(3);
-  const [isSmartMode, setIsSmartMode] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Shape drawing state
@@ -140,9 +140,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
     canvas.off('mouse:move');
     canvas.off('mouse:up');
 
-    // Always re-attach path:created for smart mode
-    canvas.off('path:created');
-    canvas.on('path:created', handlePathCreated);
+
 
     switch (tool) {
       case 'select':
@@ -262,55 +260,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
     }
   }, [color, lineWidth, canvas, tool]);
 
-  // Smart Mode & Path Handling
-  const handlePathCreated = async (e: any) => {
-    if (!isSmartMode) return;
-    // We only analyze if it's a "pen" stroke
-    if (tool !== 'pen') return;
 
-    const path = e.path;
-    if (!path) return;
-
-    setIsProcessing(true);
-
-    // 1. Analyze for Shape
-    const recognizedShape = analyzeShape(path);
-    if (recognizedShape) {
-      // Replace path with shape
-      canvas?.remove(path);
-      canvas?.add(recognizedShape);
-      canvas?.requestRenderAll();
-      setIsProcessing(false);
-      return;
-    }
-
-    // 2. Analyze for Text (if enabled? Maybe distinct toggle?)
-    // Shape recognition is fast. Text is slow.
-    // Let's optimize: Only analyze text if shape failed? 
-    // Or maybe we need a separate "Pen to Text" mode.
-    // For now, let's keep it simple: Shape only.
-    // The user asked for "write something... converted to clean text".
-    // We can try calling text recognition.
-
-    try {
-      const text = await recognizeTextFromPath(path, canvasEl.current!);
-      if (text && text.length > 0 && /^[a-zA-Z0-9\s]+$/.test(text)) { // Basic filter
-        canvas?.remove(path);
-        const iText = new fabric.IText(text, {
-          left: path.left,
-          top: path.top,
-          fill: color,
-          fontSize: 24
-        });
-        canvas?.add(iText);
-        canvas?.requestRenderAll();
-      }
-    } catch (err) {
-      // Ignore error
-    }
-
-    setIsProcessing(false);
-  };
 
   // Shape Handlers
   const handleShapeStart = (opt: any) => {
@@ -451,14 +401,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
             <ToolButton active={tool === 'line'} onClick={() => setTool('line')} icon="line" title="Line" />
           </div>
 
-          {/* Smart Toggle */}
-          <button
-            onClick={() => setIsSmartMode(!isSmartMode)}
-            className={`p-2 rounded-lg transition-all ${isSmartMode ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/50' : 'text-white/70 hover:bg-white/10'}`}
-            title="Smart Mode (Ink to Shape/Text)"
-          >
-            <span className="font-bold text-xs sm:text-sm">AI</span>
-          </button>
+
 
           {/* Color & Size */}
           <div className="flex items-center gap-2">

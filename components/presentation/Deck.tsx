@@ -32,11 +32,13 @@ export default function Deck({ children, slideCounts, lectureId = 'default' }: D
   const [isPrinting, setIsPrinting] = useState(false);
   const [isExportingPPTX, setIsExportingPPTX] = useState(false);
   const [showAnnotations, setShowAnnotations] = useState(false);
+  const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const slides = React.Children.toArray(children);
   const totalSlides = slides.length;
 
   // Determine max steps for the current slide
-  const stepsInCurrentSlide = slideCounts[currentSlide] || 0;
+  // If animations are blocked/disabled, we treat the slide as having 0 steps (single view)
+  const stepsInCurrentSlide = animationsEnabled ? (slideCounts[currentSlide] || 0) : 0;
 
   const nextSlide = useCallback(() => {
     // If there are more steps (bullets) in the current slide, advance step
@@ -248,8 +250,12 @@ export default function Deck({ children, slideCounts, lectureId = 'default' }: D
                 // Clone the slide to inject the 'step' prop only if it's the current slide
                 // logic: Neighbors get step=0 (reset) or max? 
                 // Better: passing step=0 to neighbors ensures they reset when you revisit.
+                // Clone the slide to inject the 'step' prop only if it's the current slide
+                // logic: Neighbors get step=0 (reset). If animations disabled, pass 999 to show all.
+                const stepToPass = isCurrent ? (animationsEnabled ? currentStep : 999) : 0;
+
                 const slideWithProps = React.isValidElement(slide)
-                  ? React.cloneElement(slide as React.ReactElement<any>, { step: isCurrent ? currentStep : 0 })
+                  ? React.cloneElement(slide as React.ReactElement<any>, { step: stepToPass })
                   : slide;
 
                 return (
@@ -293,6 +299,20 @@ export default function Deck({ children, slideCounts, lectureId = 'default' }: D
 
             {/* Feature Controls Group */}
             <div className="flex items-center gap-1 sm:gap-2 mr-2 sm:mr-4 border-r border-white/10 pr-3 sm:pr-4 md:pr-6">
+
+              {/* Animation Toggle */}
+              <button
+                onClick={() => setAnimationsEnabled(!animationsEnabled)}
+                title={animationsEnabled ? "Disable Animations" : "Enable Animations"}
+                className={`p-2 sm:p-2.5 md:p-3 rounded-full transition-all touch-manipulation ${!animationsEnabled ? 'bg-purple-500 text-white' : 'hover:bg-white/10 hover:text-white'}`}
+              >
+                {/* Animation Icon (Film strip or Motion) */}
+                {animationsEnabled ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" /><line x1="7" y1="2" x2="7" y2="22" /><line x1="17" y1="2" x2="17" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="2" y1="7" x2="7" y2="7" /><line x1="2" y1="17" x2="7" y2="17" /><line x1="17" y1="17" x2="22" y2="17" /><line x1="17" y1="7" x2="22" y2="7" /></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M19 19L5 5" /><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M12 2v20" /><path d="M2 12h20" /></svg>
+                )}
+              </button>
               <button
                 onClick={() => setShowAnnotations(!showAnnotations)}
                 title="Annotations"
