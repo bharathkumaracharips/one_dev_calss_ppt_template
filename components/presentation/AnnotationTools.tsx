@@ -14,12 +14,13 @@ interface AnnotationToolsProps {
   onPrev: () => void;
   totalSlides: number;
   toggleFullScreen: () => void;
+  lectureId: string;
 }
 
 type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'arrow' | 'rectangle' | 'circle' | 'line';
 type Color = string;
 
-export default function AnnotationTools({ isActive, onClose, slideIndex, onNext, onPrev, totalSlides, toggleFullScreen }: AnnotationToolsProps) {
+export default function AnnotationTools({ isActive, onClose, slideIndex, onNext, onPrev, totalSlides, toggleFullScreen, lectureId }: AnnotationToolsProps) {
   const canvasEl = useRef<HTMLCanvasElement>(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [tool, setTool] = useState<Tool>('pen');
@@ -37,12 +38,12 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
   const saveToStorage = () => {
     if (!canvas) return;
     const json = JSON.stringify(canvas.toJSON());
-    localStorage.setItem(`annotation_slide_${slideIndex}`, json);
+    localStorage.setItem(`annotation_${lectureId}_slide_${slideIndex}`, json);
   };
 
   // Load Logic
   const loadFromStorage = (c: fabric.Canvas) => {
-    const saved = localStorage.getItem(`annotation_slide_${slideIndex}`);
+    const saved = localStorage.getItem(`annotation_${lectureId}_slide_${slideIndex}`);
     if (saved) {
       c.loadFromJSON(JSON.parse(saved), () => {
         c.requestRenderAll();
@@ -81,7 +82,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
       // However, we need to use the helper which depends on 'slideIndex'. 
       // It's cleaner to inline:
       const json = JSON.stringify(newCanvas.toJSON());
-      localStorage.setItem(`annotation_slide_${slideIndex}`, json);
+      localStorage.setItem(`annotation_${lectureId}_slide_${slideIndex}`, json);
     };
 
     newCanvas.on('object:modified', handleModification);
@@ -121,7 +122,7 @@ export default function AnnotationTools({ isActive, onClose, slideIndex, onNext,
       setCanvas(null);
     };
     // Re-run when slideIndex changes to load that slide's notes
-  }, [isActive, slideIndex]);
+  }, [isActive, slideIndex, lectureId]);
 
   // Handle Tool Changes
   useEffect(() => {

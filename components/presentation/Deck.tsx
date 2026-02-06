@@ -9,6 +9,7 @@ import { presentationData } from '@/app/slides';
 interface DeckProps {
   children: React.ReactNode;
   slideCounts: number[]; // Number of "steps" (e.g. bullet points) for each slide
+  lectureId?: string;
 }
 
 export const DeckContext = React.createContext<{
@@ -25,7 +26,7 @@ export const DeckContext = React.createContext<{
   prevSlide: () => { },
 });
 
-export default function Deck({ children, slideCounts }: DeckProps) {
+export default function Deck({ children, slideCounts, lectureId = 'default' }: DeckProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [currentStep, setCurrentStep] = useState(0); // For inner slide animations (bullets)
   const [isPrinting, setIsPrinting] = useState(false);
@@ -369,10 +370,11 @@ export default function Deck({ children, slideCounts }: DeckProps) {
         isActive={showAnnotations}
         onClose={() => setShowAnnotations(false)}
         slideIndex={currentSlide}
-        onNext={nextSlide}
-        onPrev={prevSlide}
+        onNext={forceNext}
+        onPrev={forcePrev}
         totalSlides={totalSlides}
         toggleFullScreen={toggleFullScreen}
+        lectureId={lectureId}
       />
     </DeckContext.Provider>
   );
