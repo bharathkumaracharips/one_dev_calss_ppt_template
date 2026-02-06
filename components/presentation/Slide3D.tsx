@@ -35,7 +35,7 @@ export default function Slide3D({ children, isActive, className }: Slide3DProps)
                     duration: 0.5
                 }}
                 className={cn(
-                    "relative w-[80vw] h-[80vh] overflow-hidden rounded-3xl shadow-2xl",
+                    "relative w-[95vw] h-[85vh] sm:w-[90vw] sm:h-[85vh] md:w-[85vw] md:h-[80vh] lg:w-[80vw] lg:h-[80vh] overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl shadow-2xl",
                     // Base white background, but allows override
                     "bg-white",
                     className
